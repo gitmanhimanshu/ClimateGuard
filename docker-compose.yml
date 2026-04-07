@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  climateguard:
+    build: .
+    container_name: climateguard-ai
+    ports:
+      - "7860:7860"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENABLE_WEB_INTERFACE=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:7860/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

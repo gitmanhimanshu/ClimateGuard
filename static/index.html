@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 ClimateGuard AI - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .subtext {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .regions {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .regions h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .region-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .region-card {
+            border: 2px solid #eee;
+            border-radius: 10px;
+            padding: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .region-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .region-card.wildfire { border-left: 5px solid #ff6b6b; }
+        .region-card.flood { border-left: 5px solid #4ecdc4; }
+        .region-card.drought { border-left: 5px solid #f9ca24; }
+        .region-card.hurricane { border-left: 5px solid #a29bfe; }
+        .region-card.heatwave { border-left: 5px solid #fd79a8; }
+
+        .region-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .region-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .crisis-badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+        }
+
+        .crisis-badge.wildfire { background: #ff6b6b; }
+        .crisis-badge.flood { background: #4ecdc4; }
+        .crisis-badge.drought { background: #f9ca24; color: #333; }
+        .crisis-badge.hurricane { background: #a29bfe; }
+        .crisis-badge.heatwave { background: #fd79a8; }
+
+        .severity-bar {
+            width: 100%;
+            height: 20px;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .severity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #ff6b6b);
+            transition: width 0.5s;
+        }
+
+        .region-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .action-panel {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .action-panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .action-input {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .action-input label {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .action-input input {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #4ecdc4;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 ClimateGuard AI Dashboard</h1>
+            <p>Multi-Crisis Climate Response Coordination System</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Task:</label>
+                <select id="taskSelect">
+                    <option value="single_crisis">Easy - Single Crisis</option>
+                    <option value="multi_crisis" selected>Medium - Multi Crisis</option>
+                    <option value="cascade_crisis">Hard - Cascade Crisis</option>
+                </select>
+
+                <label>Seed:</label>
+                <input type="number" id="seedInput" value="42" min="0" max="99999">
+
+                <button id="resetBtn" onclick="resetEnvironment()">🔄 Reset Environment</button>
+                <button id="stepBtn" onclick="takeStep()" disabled>▶️ Take Step</button>
+                <button id="autoBtn" onclick="toggleAuto()">🤖 Auto Play</button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Day</h3>
+                <div class="value" id="dayValue">0</div>
+                <div class="subtext">Current Day</div>
+            </div>
+            <div class="stat-card">
+                <h3>Reward</h3>
+                <div class="value" id="rewardValue">-</div>
+                <div class="subtext">Current Reward</div>
+            </div>
+            <div class="stat-card">
+                <h3>Lives Saved</h3>
+                <div class="value" id="evacuatedValue">0</div>
+                <div class="subtext">Total Evacuated</div>
+            </div>
+            <div class="stat-card">
+                <h3>Casualties</h3>
+                <div class="value" id="casualtiesValue">0</div>
+                <div class="subtext">Total Casualties</div>
+            </div>
+            <div class="stat-card">
+                <h3>Budget</h3>
+                <div class="value" id="budgetValue">$0M</div>
+                <div class="subtext">Remaining Budget</div>
+            </div>
+            <div class="stat-card">
+                <h3>CO₂</h3>
+                <div class="value" id="co2Value">420</div>
+                <div class="subtext">ppm</div>
+            </div>
+        </div>
+
+        <div class="regions">
+            <h2>🗺️ Crisis Regions</h2>
+            <div class="region-grid" id="regionGrid">
+                <div class="loading">Click "Reset Environment" to start</div>
+            </div>
+        </div>
+
+        <div class="action-panel">
+            <h2>🎮 Quick Actions</h2>
+            <div class="action-grid">
+                <div class="action-input">
+                    <label>Firefighting (Region 0):</label>
+                    <input type="number" id="fire0" value="3" min="0" max="10">
+                </div>
+                <div class="action-input">
+                    <label>Firefighting (Region 1):</label>
+                    <input type="number" id="fire1" value="2" min="0" max="10">
+                </div>
+                <div class="action-input">
+                    <label>Medical (Region 0):</label>
+                    <input type="number" id="med0" value="2" min="0" max="10">
+                </div>
+                <div class="action-input">
+                    <label>Medical (Region 1):</label>
+                    <input type="number" id="med1" value="1" min="0" max="10">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentState = null;
+        let autoPlay = false;
+        let autoInterval = null;
+
+        async function resetEnvironment() {
+            const task = document.getElementById('taskSelect').value;
+            const seed = parseInt(document.getElementById('seedInput').value);
+            
+            showMessage('Resetting environment...', 'loading');
+            document.getElementById('resetBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: task, seed: seed })
+                });
+                
+                const data = await response.json();
+                currentState = data;
+                updateUI(data);
+                document.getElementById('stepBtn').disabled = false;
+                showMessage('Environment reset successfully!', 'success');
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('resetBtn').disabled = false;
+            }
+        }
+
+        async function takeStep() {
+            if (!currentState) return;
+            
+            const action = {
+                firefighting_allocation: {
+                    "0": parseInt(document.getElementById('fire0').value) || 0,
+                    "1": parseInt(document.getElementById('fire1').value) || 0
+                },
+                flood_rescue_allocation: {},
+                medical_allocation: {
+                    "0": parseInt(document.getElementById('med0').value) || 0,
+                    "1": parseInt(document.getElementById('med1').value) || 0
+                },
+                evacuation_allocation: { "2": 5, "3": 5 },
+                power_restoration: [],
+                water_supply_restoration: [],
+                firebreaks: [],
+                flood_barriers: [],
+                evacuation_orders: [2, 3],
+                food_distribution: {},
+                water_distribution: {},
+                satellite_coverage: [],
+                priority_regions: []
+            };
+            
+            document.getElementById('stepBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/step', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(action)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(JSON.stringify(errorData));
+                }
+                
+                const data = await response.json();
+                currentState = data;
+                updateUI(data);
+                
+                if (data.done) {
+                    showMessage('Episode completed!', 'success');
+                    document.getElementById('stepBtn').disabled = true;
+                    if (autoPlay) toggleAuto();
+                } else {
+                    document.getElementById('stepBtn').disabled = false;
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+                document.getElementById('stepBtn').disabled = false;
+            }
+        }
+
+        function toggleAuto() {
+            autoPlay = !autoPlay;
+            const btn = document.getElementById('autoBtn');
+            
+            if (autoPlay) {
+                btn.textContent = '⏸️ Pause';
+                autoInterval = setInterval(() => {
+                    if (!document.getElementById('stepBtn').disabled) {
+                        takeStep();
+                    }
+                }, 2000);
+            } else {
+                btn.textContent = '🤖 Auto Play';
+                if (autoInterval) clearInterval(autoInterval);
+            }
+        }
+
+        function updateUI(data) {
+            // Update stats
+            document.getElementById('dayValue').textContent = data.day || 0;
+            document.getElementById('rewardValue').textContent = data.reward ? data.reward.toFixed(3) : '-';
+            document.getElementById('evacuatedValue').textContent = data.total_evacuated || 0;
+            document.getElementById('casualtiesValue').textContent = data.total_casualties || 0;
+            document.getElementById('budgetValue').textContent = data.resources ? `$${data.resources.budget_millions}M` : '$0M';
+            document.getElementById('co2Value').textContent = data.co2_ppm ? Math.round(data.co2_ppm) : 420;
+            
+            // Update regions
+            const regionGrid = document.getElementById('regionGrid');
+            regionGrid.innerHTML = '';
+            
+            if (data.regions && data.regions.length > 0) {
+                data.regions.forEach(region => {
+                    const card = document.createElement('div');
+                    card.className = `region-card ${region.crisis_type.toLowerCase()}`;
+                    
+                    card.innerHTML = `
+                        <div class="region-header">
+                            <div class="region-name">${region.region_name}</div>
+                            <div class="crisis-badge ${region.crisis_type.toLowerCase()}">${region.crisis_type}</div>
+                        </div>
+                        <div class="severity-bar">
+                            <div class="severity-fill" style="width: ${region.severity * 100}%"></div>
+                        </div>
+                        <div class="region-stats">
+                            <div>Population: ${region.population.toLocaleString()}</div>
+                            <div>Evacuated: ${region.evacuated.toLocaleString()}</div>
+                            <div>Severity: ${(region.severity * 100).toFixed(0)}%</div>
+                            <div>Casualties: ${region.casualties}</div>
+                            <div>Power: ${(region.power_grid * 100).toFixed(0)}%</div>
+                            <div>Water: ${(region.water_supply * 100).toFixed(0)}%</div>
+                        </div>
+                    `;
+                    
+                    regionGrid.appendChild(card);
+                });
+            }
+        }
+
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = type;
+            msgDiv.textContent = text;
+            msgDiv.style.display = 'block';
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    msgDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

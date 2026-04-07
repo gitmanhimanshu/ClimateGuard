@@ -1,0 +1,24 @@
+spec_version: 1
+name: climatecrisis
+display_name: "ClimateGuard AI — Multi-Crisis Climate Response System"
+description: >
+  An advanced RL environment for training AI agents to coordinate
+  global climate crisis response across wildfires, floods, droughts,
+  and extreme weather events. Calibrated on 15+ years of NOAA climate
+  data, IPCC models, and WHO disaster response protocols.
+type: environment
+runtime:
+  image: climatecrisis:latest
+  port: 7860
+app:
+  module: server.app
+  variable: app
+tags:
+  - climate-change
+  - disaster-response
+  - multi-agent
+  - reinforcement-learning
+  - real-world
+  - openenv
+version: 1.0.0
+author: "Meta PyTorch Hackathon 2026"

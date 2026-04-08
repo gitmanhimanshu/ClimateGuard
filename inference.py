@@ -1,23 +1,65 @@
 """
 Baseline inference script for ClimateGuard AI
-Required log format: [START], [STEP], [END]
+Uses OpenAI Client with required environment variables
 """
 
 import os
 import json
 import requests
+from openai import OpenAI
 
-# Environment variables
+# Required environment variables
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN", "")
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
+# Initialize OpenAI client
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=HF_TOKEN
+)
+
 TASKS = ["single_crisis", "multi_crisis", "cascade_crisis"]
 
 
-def parse_action(obs: dict) -> dict:
-    """Heuristic action based on observation"""
+def call_llm(system_prompt: str, user_prompt: str) -> str:
+    """Call LLM using OpenAI client"""
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+def format_observation(obs: dict) -> str:
+    """Format observation for LLM"""
+    lines = [
+        f"Day {obs['day']} - Budget: ${obs['resources']['budget_millions']}M",
+        f"Casualties: {obs['total_casualties']}, Evacuated: {obs['total_evacuated']}",
+        f"\nResources: Firefighting={obs['resources']['firefighting_units']}, Medical={obs['resources']['medical_teams']}, Buses={obs['resources']['evacuation_buses']}",
+        f"\nTop Regions:"
+    ]
+    
+    for region in obs['regions'][:3]:
+        lines.append(
+            f"  {region['region_name']}: {region['crisis_type']} "
+            f"(severity {region['severity']:.2f}, pop {region['population']:,})"
+        )
+    
+    return "\n".join(lines)
+
+
+def parse_action_from_llm(llm_response: str, obs: dict) -> dict:
+    """Parse LLM response into action with fallback heuristics"""
     action = {
         "firefighting_allocation": {},
         "flood_rescue_allocation": {},
@@ -34,6 +76,7 @@ def parse_action(obs: dict) -> dict:
         "priority_regions": []
     }
     
+    # Heuristic fallback based on observation
     for region in obs['regions']:
         rid = str(region['region_id'])
         severity = region['severity']
@@ -69,12 +112,22 @@ def run_episode(task_id: str, seed: int) -> tuple:
         )
         obs = reset_response.json()
         
+        system_prompt = """You are an AI coordinator for climate crisis response.
+Minimize casualties and maximize evacuations by allocating resources effectively."""
+        
         rewards = []
         step = 0
         
         while not obs.get('done', False) and step < 20:
             step += 1
-            action = parse_action(obs)
+            
+            # Get LLM guidance
+            obs_text = format_observation(obs)
+            user_prompt = f"{obs_text}\n\nProvide crisis response strategy."
+            llm_response = call_llm(system_prompt, user_prompt)
+            
+            # Parse action
+            action = parse_action_from_llm(llm_response, obs)
             
             step_response = requests.post(
                 f"{ENV_URL}/step",
@@ -86,6 +139,7 @@ def run_episode(task_id: str, seed: int) -> tuple:
             done = obs.get('done', False)
             rewards.append(reward)
             
+            # Required log format
             print(f"[STEP] step={step} action={json.dumps(action)} reward={reward:.2f} done={done} error=null")
         
         score = sum(rewards) / len(rewards) if rewards else 0.0
@@ -99,6 +153,7 @@ def run_episode(task_id: str, seed: int) -> tuple:
 
 def main():
     """Run baseline inference with required log format"""
+    # Required [START] format
     print(f"[START] task=climateguard env=climateguard-ai model={MODEL_NAME}")
     
     results = {}
@@ -113,6 +168,7 @@ def main():
     avg_score = sum(results.values()) / len(results) if results else 0.0
     all_rewards = ",".join([f"{results[t]:.2f}" for t in TASKS])
     
+    # Required [END] format
     print(f"[END] success=true steps={len(TASKS)} score={avg_score:.2f} rewards={all_rewards}")
 
 

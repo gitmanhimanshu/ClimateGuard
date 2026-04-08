@@ -60,7 +60,6 @@ def deploy_to_huggingface(repo_name: str, token: str = None):
                 ('pyproject.toml', 'pyproject.toml'),
                 ('uv.lock', 'uv.lock'),
                 ('server', 'server'),
-                ('static', 'static'),
                 ('requirements.txt', 'requirements.txt'),
                 ('Dockerfile', 'Dockerfile'),
                 ('README.md', 'README.md'),

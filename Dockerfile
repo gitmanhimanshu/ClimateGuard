@@ -17,7 +17,6 @@ COPY models.py .
 COPY openenv.yaml .
 COPY inference.py .
 COPY server/ ./server/
-COPY static/ ./static/
 
 # Expose port
 EXPOSE 7860

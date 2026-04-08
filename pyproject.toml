@@ -1,0 +1,28 @@
+[project]
+name = "climateguard-ai"
+version = "1.0.0"
+description = "Multi-Crisis Climate Response Coordination System"
+authors = [
+    {name = "Meta PyTorch Hackathon 2026"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0.0",
+    "numpy>=1.24.0",
+    "requests>=2.31.0",
+    "openai>=1.0.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_backend"
+
+[tool.setuptools]
+packages = ["server"]

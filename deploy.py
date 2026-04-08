@@ -56,6 +56,9 @@ def deploy_to_huggingface(repo_name: str, token: str = None):
             items_to_copy = [
                 ('openenv.yaml', 'openenv.yaml'),
                 ('models.py', 'models.py'),
+                ('inference.py', 'inference.py'),
+                ('pyproject.toml', 'pyproject.toml'),
+                ('uv.lock', 'uv.lock'),
                 ('server', 'server'),
                 ('static', 'static'),
                 ('requirements.txt', 'requirements.txt'),

@@ -6,6 +6,8 @@ WORKDIR /app
 
 # Copy requirements first (for caching)
 COPY requirements.txt .
+COPY pyproject.toml .
+COPY uv.lock .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -13,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all application files
 COPY models.py .
 COPY openenv.yaml .
+COPY inference.py .
 COPY server/ ./server/
 COPY static/ ./static/
 
@@ -28,4 +31,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD python -c "import requests; requests.get('http://localhost:7860/health')"
 
 # Run server
-CMD ["python", "-m", "server.app"]
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]

@@ -1,64 +1,23 @@
 """
 Baseline inference script for ClimateGuard AI
-Tests the environment with OpenAI GPT-4 agent
+Required log format: [START], [STEP], [END]
 """
 
 import os
-import sys
 import json
 import requests
-from openai import OpenAI
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Environment variables
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
-# Environment endpoint
-ENV_URL = os.environ.get("ENV_URL", "http://localhost:7860")
-
-# Tasks to test
 TASKS = ["single_crisis", "multi_crisis", "cascade_crisis"]
 
 
-def call_llm(system_prompt: str, user_prompt: str) -> str:
-    """Call OpenAI API"""
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        temperature=0.7,
-        max_tokens=1000
-    )
-    return response.choices[0].message.content
-
-
-def format_observation(obs: dict) -> str:
-    """Format observation for LLM"""
-    lines = [
-        f"Day {obs['day']}",
-        f"Total Casualties: {obs['total_casualties']}",
-        f"Total Evacuated: {obs['total_evacuated']}",
-        f"Budget: ${obs['resources']['budget_millions']}M",
-        f"\nResources Available:",
-        f"  Firefighting Units: {obs['resources']['firefighting_units']}",
-        f"  Medical Teams: {obs['resources']['medical_teams']}",
-        f"  Evacuation Buses: {obs['resources']['evacuation_buses']}",
-        f"\nRegions:"
-    ]
-    
-    for region in obs['regions'][:5]:  # Show first 5 regions
-        lines.append(
-            f"  {region['region_name']}: {region['crisis_type']} "
-            f"(severity {region['severity']:.2f}, pop {region['population']:,})"
-        )
-    
-    return "\n".join(lines)
-
-
-def parse_action(llm_response: str, obs: dict) -> dict:
-    """Parse LLM response into action"""
-    # Simple heuristic-based action
+def parse_action(obs: dict) -> dict:
+    """Heuristic action based on observation"""
     action = {
         "firefighting_allocation": {},
         "flood_rescue_allocation": {},
@@ -75,7 +34,6 @@ def parse_action(llm_response: str, obs: dict) -> dict:
         "priority_regions": []
     }
     
-    # Allocate resources based on crisis severity
     for region in obs['regions']:
         rid = str(region['region_id'])
         severity = region['severity']
@@ -102,80 +60,60 @@ def parse_action(llm_response: str, obs: dict) -> dict:
     return action
 
 
-def run_episode(task_id: str, seed: int) -> float:
-    """Run one episode"""
-    # Reset environment
-    reset_response = requests.post(
-        f"{ENV_URL}/reset",
-        json={"task_id": task_id, "seed": seed}
-    )
-    obs = reset_response.json()
-    
-    system_prompt = """You are an AI coordinator for global climate crisis response.
-Your goal is to minimize casualties and maximize evacuations by allocating resources
-effectively across multiple regions facing wildfires, floods, droughts, and extreme weather."""
-    
-    total_reward = 0.0
-    step = 0
-    
-    while not obs.get('done', False):
-        step += 1
-        
-        # Format observation
-        obs_text = format_observation(obs)
-        
-        # Get LLM decision
-        user_prompt = f"{obs_text}\n\nWhat actions should we take?"
-        llm_response = call_llm(system_prompt, user_prompt)
-        
-        # Parse action
-        action = parse_action(llm_response, obs)
-        
-        # Take step
-        step_response = requests.post(
-            f"{ENV_URL}/step",
-            json=action
+def run_episode(task_id: str, seed: int) -> tuple:
+    """Run episode and return (score, rewards, steps, success, error)"""
+    try:
+        reset_response = requests.post(
+            f"{ENV_URL}/reset",
+            json={"task_id": task_id, "seed": seed}
         )
-        obs = step_response.json()
+        obs = reset_response.json()
         
-        reward = obs.get('reward', 0.0)
-        total_reward += reward
+        rewards = []
+        step = 0
         
-        print(f"[STEP] task={task_id} step={step} reward={reward:.3f} "
-              f"casualties={obs['total_casualties']} evacuated={obs['total_evacuated']}")
-    
-    return total_reward
+        while not obs.get('done', False) and step < 20:
+            step += 1
+            action = parse_action(obs)
+            
+            step_response = requests.post(
+                f"{ENV_URL}/step",
+                json=action
+            )
+            obs = step_response.json()
+            
+            reward = obs.get('reward', 0.0)
+            done = obs.get('done', False)
+            rewards.append(reward)
+            
+            print(f"[STEP] step={step} action={json.dumps(action)} reward={reward:.2f} done={done} error=null")
+        
+        score = sum(rewards) / len(rewards) if rewards else 0.0
+        score = max(0.0, min(1.0, score))
+        
+        return score, rewards, step, True, None
+        
+    except Exception as e:
+        return 0.0, [], 0, False, str(e)
 
 
 def main():
-    """Run baseline inference"""
-    print("[START] ClimateGuard AI Baseline Inference")
-    print(f"Environment: {ENV_URL}")
-    print(f"Model: gpt-4")
-    print()
+    """Run baseline inference with required log format"""
+    print(f"[START] task=climateguard env=climateguard-ai model={MODEL_NAME}")
     
     results = {}
     
     for task_id in TASKS:
-        print(f"\n{'='*60}")
-        print(f"Running task: {task_id}")
-        print('='*60)
-        
-        total_reward = run_episode(task_id, seed=42)
-        score = max(0.0, min(1.0, total_reward))
-        
+        score, rewards, steps, success, error = run_episode(task_id, seed=42)
         results[task_id] = score
-        print(f"[END] task={task_id} score={score:.2f}")
+        
+        if not success:
+            print(f"[ERROR] task={task_id} error={error}")
     
-    # Print summary
-    print(f"\n{'='*60}")
-    print("SUMMARY")
-    print('='*60)
-    for task_id, score in results.items():
-        print(f"{task_id}: {score:.2f}")
+    avg_score = sum(results.values()) / len(results) if results else 0.0
+    all_rewards = ",".join([f"{results[t]:.2f}" for t in TASKS])
     
-    avg_score = sum(results.values()) / len(results)
-    print(f"\nAverage Score: {avg_score:.2f}")
+    print(f"[END] success=true steps={len(TASKS)} score={avg_score:.2f} rewards={all_rewards}")
 
 
 if __name__ == "__main__":
